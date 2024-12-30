@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Buscar Filme - Avalie+</title>
+</head>
+<body>
+    <h1>Buscar Filme</h1>
+    <div class="search-container">
+        <input type="text" id="movieSearch" placeholder="Digite o nome do filme">
+        <button id="searchBtn">Buscar</button>
+    </div>
+
+    <div id="movieDetails" style="display: none;">
+        <div class="details-container">
+            <img id="moviePoster" alt="Poster do Filme">
+            <div id="movie-info">
+                <h2 id="movieTitle"></h2>
+                <p><strong>Ano de Lançamento:</strong> <span id="movieYear"></span></p>
+                <p><strong>Gênero:</strong> <span id="movieGenre"></span></p>
+                <p><strong>Diretor:</strong> <span id="movieDirector"></span></p>
+                <p><strong>Sinopse:</strong> <span id="moviePlot"></span></p>
+            </div>
+        </div>
+        <button id="addMovieBtn">Adicionar ao Índice</button>
+    </div>
+
+    <script>
+        document.getElementById("searchBtn").addEventListener("click", function() {
+            let movieName = document.getElementById("movieSearch").value;
+            if (movieName) {
+                fetch(`http://www.omdbapi.com/?t=${movieName}&apikey=3dc867b6`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.Response === "True") {
+                            document.getElementById("movieTitle").innerText = data.Title;
+                            document.getElementById("movieYear").innerText = data.Year;
+                            document.getElementById("movieGenre").innerText = data.Genre;
+                            document.getElementById("movieDirector").innerText = data.Director;
+                            document.getElementById("moviePlot").innerText = data.Plot;
+                            document.getElementById("moviePoster").src = data.Poster;
+                            document.getElementById("movieDetails").style.display = "block";
+                            document.getElementById("addMovieBtn").onclick = function () {
+                                addMovieToDatabase(data);
+                            };
+                        } else {
+                            alert("Filme não encontrado!");
+                        }
+                    })
+                    .catch(error => alert("Erro ao buscar o filme"));
+            }
+        });
+
+        function addMovieToDatabase(movie) {
+            const movieData = {
+                titulo: movie.Title,
+                ano_lancamento: movie.Year,
+                genero: movie.Genre,
+                diretor: movie.Director,
+                sinopse: movie.Plot
+            };
+
+            fetch('http://localhost:3000/add-movie', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(movieData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Filme adicionado com sucesso!');
+                    window.location.href = "index.html";
+                } else {
+                    alert('Erro ao adicionar o filme.');
+                }
+            })
+            .catch(error => alert("Erro ao adicionar o filme"));
+        }
+    </script>
+</body>
+</html>

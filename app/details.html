@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Detalhes do Filme - Avalie+</title>
+</head>
+<body>
+    <h1 id="movie-title">Carregando...</h1>
+    
+    <div id="movieCard" class="card">
+        <div id="movieDetails" class="details-container">
+            <img id="moviePoster" src="" alt="Poster do Filme">
+            <div id="movie-info">
+                <p id="movie-year"></p>
+                <p id="movie-genre"></p>
+                <p id="movie-director"></p>
+                <p id="movie-synopsis"></p>
+                <p id="movie-rating"></p>
+            </div>
+        </div>
+        <div id="addReviewForm">
+            <h3>Deixe sua Avaliação:</h3>
+            <form id="reviewForm">
+                <input type="text" id="nome_avaliador" placeholder="Seu nome" required>
+                <input type="number" id="nota" placeholder="Nota (1-10)" min="1" max="10" required>
+                <textarea id="comentario" placeholder="Seu comentário" required></textarea>
+                <button type="submit">Enviar Avaliação</button>
+            </form>
+        </div>
+        <div id="movieReviews" class="reviews-container">
+            <h2>Avaliações</h2>
+            <div id="reviews-list">Nenhuma avaliação encontrada.</div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '3dc867b6';
+const movieId = new URLSearchParams(window.location.search).get('id');
+
+if (!movieId) {
+    alert('ID do filme não fornecido.');
+}
+
+function buscarDetalhesFilme() {
+    fetch(`http://localhost:3000/get-movie-details?id=${movieId}`)
+        .then(response => response.json())
+        .then(movie => {
+            exibirDetalhesFilme(movie);
+            buscarDetalhesAdicionais(movie.titulo);
+            buscarAvaliacoes();
+        })
+        .catch(error => {
+            console.error('Erro ao buscar detalhes do filme:', error);
+            alert('Erro ao carregar os detalhes do filme.');
+        });
+}
+
+function buscarDetalhesAdicionais(titulo) {
+    fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(titulo)}&apikey=${API_KEY}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.Response === "True") {
+                document.getElementById('moviePoster').src = data.Poster || '';
+                document.getElementById('movie-rating').innerHTML = `<strong>Nota IMDB:</strong> ${data.imdbRating || 'N/A'}`;
+            }
+        })
+        .catch(error => console.error('Erro ao carregar detalhes adicionais:', error));
+}
+
+function exibirDetalhesFilme(movie) {
+    document.getElementById('movie-title').textContent = movie.titulo;
+    document.getElementById('movie-year').innerHTML = `<strong>Ano:</strong> ${movie.ano_lancamento}`;
+    document.getElementById('movie-genre').innerHTML = `<strong>Gênero:</strong> ${movie.genero}`;
+    document.getElementById('movie-director').innerHTML = `<strong>Diretor:</strong> ${movie.diretor}`;
+    document.getElementById('movie-synopsis').innerHTML = `<strong>Sinopse:</strong> ${movie.sinopse}`;
+}
+
+function buscarAvaliacoes() {
+    fetch(`http://localhost:3000/get-reviews?filme_id=${movieId}`)
+        .then(response => response.json())
+        .then(data => {
+            const reviewsList = document.getElementById('reviews-list');
+            reviewsList.innerHTML = '';
+            if (data.reviews && data.reviews.length > 0) {
+                data.reviews.forEach(review => {
+                    const reviewElement = document.createElement('div');
+                    reviewElement.classList.add('review');
+                    reviewElement.innerHTML = `
+                        <p><strong>${review.nome_avaliador || 'Anônimo'}</strong> - ★ ${review.nota}</p>
+                        <p class="review-comment">${review.comentario}</p>
+                        <hr>
+                    `;
+                    reviewsList.appendChild(reviewElement);
+                });
+            } else {
+                reviewsList.textContent = 'Nenhuma avaliação encontrada.';
+            }
+        })
+        .catch(error => console.error('Erro ao carregar avaliações:', error));
+}
+
+document.getElementById('reviewForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const nomeAvaliador = document.getElementById('nome_avaliador').value;
+    const nota = parseInt(document.getElementById('nota').value, 10);
+    const comentario = document.getElementById('comentario').value;
+
+    fetch('http://localhost:3000/add-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome_avaliador: nomeAvaliador, nota, comentario, filme_id: movieId })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erro: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('Avaliação adicionada com sucesso!');
+            buscarAvaliacoes();
+        } else {
+            alert('Erro ao adicionar avaliação: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao adicionar avaliação:', error);
+        alert('Erro ao adicionar avaliação.');
+    });
+});
+
+buscarDetalhesFilme();
+    </script>
+</body>
+</html>
